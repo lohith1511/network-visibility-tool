@@ -1,5 +1,5 @@
 {
-  "name": "Network Reconnaissance Automation",
+  "name": "Safe Network Reconnaissance Automation",
   "nodes": [
     {
       "parameters": {
@@ -16,44 +16,48 @@
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1,
-      "position": [250, 300]
+      "position": [250, 300],
+      "notes": "Daily scan at configured time"
     },
     {
       "parameters": {
-        "command": "python3 recon.py 192.168.1.0/24"
+        "command": "cd /path/to/safe-network-recon && ./scan.sh 192.168.1.0/24"
       },
       "id": "execute-scan",
-      "name": "Execute Scan",
+      "name": "Execute Safe Scan",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [450, 300]
+      "position": [450, 300],
+      "notes": "Update path and network CIDR as needed"
     },
     {
       "parameters": {
         "operation": "readFile",
-        "fileName": "reports/report.md",
+        "fileName": "/path/to/safe-network-recon/reports/report.md",
         "options": {}
       },
       "id": "read-report",
       "name": "Read Report",
       "type": "n8n-nodes-base.readFile",
       "typeVersion": 1,
-      "position": [650, 300]
+      "position": [650, 300],
+      "notes": "Update path to report file"
     },
     {
       "parameters": {
         "resource": "message",
         "operation": "sendMessage",
         "chatId": "YOUR_CHAT_ID",
-        "text": "={{ $json.content }}",
+        "text": "={{ $json.content }}\n\n*Safe Network Scan Complete*\nNetwork: 192.168.1.0/24\nTime: {{ $now }}",
         "additionalFields": {}
       },
-      "id": "send-notification",
-      "name": "Send Notification",
+      "id": "send-telegram",
+      "name": "Send Telegram Notification",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1,
       "position": [850, 300],
-      "disabled": true
+      "disabled": true,
+      "notes": "Optional: Configure Telegram bot token and chat ID"
     },
     {
       "parameters": {
@@ -61,16 +65,21 @@
         "resource": "database",
         "databaseId": {
           "__rl": true,
-            "value": "YOUR_DATABASE_ID",
-            "mode": "id"
+          "value": "YOUR_DATABASE_ID",
+          "mode": "id"
         },
-        "title": "={{ $json.title }}",
+        "title": "Network Scan Report - {{ $now }}",
         "properties": {
           "property": [
             {
               "key": "title",
               "type": "title",
               "title": "Scan Report"
+            },
+            {
+              "key": "content",
+              "type": "rich_text",
+              "rich_text": "={{ $json.content }}"
             }
           ]
         }
@@ -80,7 +89,25 @@
       "type": "n8n-nodes-base.notion",
       "typeVersion": 1,
       "position": [1050, 300],
-      "disabled": true
+      "disabled": true,
+      "notes": "Optional: Configure Notion integration"
+    },
+    {
+      "parameters": {
+        "fromEmail": "your-email@example.com",
+        "toEmail": "recipient@example.com",
+        "subject": "Network Reconnaissance Scan Report",
+        "emailType": "html",
+        "message": "<h2>Network Scan Report</h2><p>Scan completed at {{ $now }}</p><pre>{{ $json.content }}</pre>",
+        "options": {}
+      },
+      "id": "send-email",
+      "name": "Send Email Notification",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [850, 450],
+      "disabled": true,
+      "notes": "Optional: Configure SMTP settings"
     }
   ],
   "connections": {
@@ -88,14 +115,14 @@
       "main": [
         [
           {
-            "node": "Execute Scan",
+            "node": "Execute Safe Scan",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Execute Scan": {
+    "Execute Safe Scan": {
       "main": [
         [
           {
@@ -110,12 +137,17 @@
       "main": [
         [
           {
-            "node": "Send Notification",
+            "node": "Send Telegram Notification",
             "type": "main",
             "index": 0
           },
           {
             "node": "Save to Notion",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Email Notification",
             "type": "main",
             "index": 0
           }
@@ -128,9 +160,19 @@
     "executionOrder": "v1"
   },
   "staticData": null,
-  "tags": [],
+  "tags": [
+    {
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "id": "network-recon",
+      "name": "network-recon"
+    }
+  ],
   "triggerCount": 1,
   "updatedAt": "2024-01-01T00:00:00.000Z",
-  "versionId": "1"
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "your-instance-id"
+  }
 }
-

@@ -1,8 +1,11 @@
 #!/bin/bash
 #
-# Network Scanning Script
+# Safe Network Scanning Script
 # Safe network reconnaissance automation script
 #
+# ETHICAL USE DISCLAIMER:
+# This script is for AUTHORIZED internal network scanning ONLY.
+# Use only on networks you own or have explicit written permission to scan.
 
 set -e
 
@@ -10,20 +13,30 @@ set -e
 NETWORK="${1:-192.168.1.0/24}"
 OUTPUT_DIR="reports"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-REPORT_FILE="${OUTPUT_DIR}/scan_${TIMESTAMP}.txt"
+REPORT_FILE="${OUTPUT_DIR}/scan_${TIMESTAMP}.md"
+CSV_FILE="${OUTPUT_DIR}/inventory_${TIMESTAMP}.csv"
 
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Create output directory if it doesn't exist
 mkdir -p "${OUTPUT_DIR}"
 
-echo -e "${GREEN}=== Network Reconnaissance Scan ===${NC}"
-echo "Network: ${NETWORK}"
-echo "Output: ${REPORT_FILE}"
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}  SAFE NETWORK RECONNAISSANCE SCAN${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo ""
+echo -e "${YELLOW}ETHICAL USE DISCLAIMER:${NC}"
+echo "This tool is for AUTHORIZED internal network scanning ONLY."
+echo "Use only on networks you own or have explicit permission to scan."
+echo ""
+echo -e "${GREEN}Network:${NC} ${NETWORK}"
+echo -e "${GREEN}Output:${NC} ${REPORT_FILE}"
+echo -e "${GREEN}Timestamp:${NC} $(date +'%Y-%m-%d %H:%M:%S')"
 echo ""
 
 # Function to log messages
@@ -31,91 +44,116 @@ log() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1" | tee -a "${REPORT_FILE}"
 }
 
-# Function to check if host is alive
-ping_host() {
-    local host=$1
-    if ping -c 1 -W 1 "${host}" > /dev/null 2>&1; then
-        return 0
-    else
-        return 1
-    fi
-}
-
-# Function to scan common ports
-scan_ports() {
-    local host=$1
-    local ports=(21 22 23 25 53 80 110 143 443 445 993 995 3389)
-    local open_ports=()
-    
-    for port in "${ports[@]}"; do
-        if timeout 1 bash -c "echo >/dev/tcp/${host}/${port}" 2>/dev/null; then
-            open_ports+=("${port}")
-        fi
-    done
-    
-    echo "${open_ports[@]}"
-}
-
-# Function to resolve hostname
-resolve_hostname() {
-    local ip=$1
-    hostname=$(getent hosts "${ip}" | awk '{print $2}' | head -n1)
-    if [ -z "${hostname}" ]; then
-        hostname=$(dig +short -x "${ip}" 2>/dev/null | sed 's/\.$//')
-    fi
-    echo "${hostname:-N/A}"
-}
-
-# Main scan function
-main_scan() {
-    log "Starting network scan of ${NETWORK}"
-    
-    # Extract network base and CIDR
-    network_base=$(echo "${NETWORK}" | cut -d'/' -f1)
-    cidr=$(echo "${NETWORK}" | cut -d'/' -f2)
-    
-    log "Scanning network ${network_base}/${cidr}"
-    
-    # Calculate IP range (simplified for /24)
-    if [ "${cidr}" = "24" ]; then
-        base_ip=$(echo "${network_base}" | cut -d'.' -f1-3)
-        
-        active_hosts=0
-        for i in {1..254}; do
-            host_ip="${base_ip}.${i}"
-            
-            echo -ne "\rScanning ${host_ip}... "
-            
-            if ping_host "${host_ip}"; then
-                echo -e "\r${GREEN}✓${NC} ${host_ip} is alive"
-                hostname=$(resolve_hostname "${host_ip}")
-                open_ports=$(scan_ports "${host_ip}")
-                
-                log "Host: ${host_ip}"
-                log "  Hostname: ${hostname}"
-                log "  Open Ports: ${open_ports:-None}"
-                log ""
-                
-                ((active_hosts++))
-            fi
-        done
-        
-        echo ""
-        log "Scan complete. Found ${active_hosts} active hosts."
-    else
-        log "Warning: This script currently supports /24 networks only."
-        log "For other networks, please use recon.py"
-    fi
-}
-
 # Check if Python script is available
-if command -v python3 &> /dev/null; then
-    log "Python3 detected. Using Python-based scanner for better results..."
-    python3 recon.py "${NETWORK}" >> "${REPORT_FILE}" 2>&1
-else
-    log "Python3 not found. Using bash-based scanner..."
-    main_scan
+if ! command -v python3 &> /dev/null; then
+    echo -e "${RED}Error: Python3 is not installed${NC}"
+    exit 1
 fi
 
-echo -e "${GREEN}Scan complete! Report saved to ${REPORT_FILE}${NC}"
+# Check if required Python packages are installed
+echo -e "${BLUE}Checking dependencies...${NC}"
+if ! python3 -c "import scapy" 2>/dev/null; then
+    echo -e "${YELLOW}Warning: Scapy not installed. Install with: pip install scapy${NC}"
+fi
 
+if ! python3 -c "import nmap" 2>/dev/null; then
+    echo -e "${YELLOW}Warning: python-nmap not installed. Install with: pip install python-nmap${NC}"
+fi
+
+# Check if Nmap is installed
+if ! command -v nmap &> /dev/null; then
+    echo -e "${YELLOW}Warning: Nmap not installed. Install with: sudo apt-get install nmap${NC}"
+    echo -e "${YELLOW}Some features may not work without Nmap.${NC}"
+fi
+
+echo ""
+
+# Initialize report file
+cat > "${REPORT_FILE}" << EOF
+# Network Reconnaissance Report
+
+**Generated:** $(date +'%Y-%m-%d %H:%M:%S')
+**Network Scanned:** ${NETWORK}
+**Scan Type:** Safe Reconnaissance (ARP + Nmap -sn -T2)
+
+## Ethical Use Disclaimer
+
+This scan was performed on an authorized network only. Unauthorized scanning is illegal and unethical.
+
+## Scan Configuration
+
+- **Passive Discovery:** ARP (Scapy)
+- **Active Discovery:** Nmap ping scan (-sn -T2)
+- **Port Scanning:** Limited to ports 22, 80, 443
+- **Timing:** Polite (T2)
+
+## Results
+
+EOF
+
+# Run Python scanner
+log "Starting Python-based safe network scanner..."
+log "Using: recon.py ${NETWORK}"
+
+if python3 recon.py "${NETWORK}" 2>&1 | tee -a "${REPORT_FILE}"; then
+    echo ""
+    echo -e "${GREEN}Python scan completed successfully${NC}"
+    
+    # Export CSV if Python script supports it
+    if python3 -c "from recon import NetworkRecon; r = NetworkRecon(); r.export_to_csv('${CSV_FILE}')" 2>/dev/null; then
+        log "CSV inventory exported to: ${CSV_FILE}"
+        echo -e "${GREEN}CSV export: ${CSV_FILE}${NC}"
+    fi
+else
+    echo -e "${RED}Error: Python scan failed${NC}"
+    log "ERROR: Python scan failed"
+    exit 1
+fi
+
+# Add summary to report
+cat >> "${REPORT_FILE}" << EOF
+
+## Scan Summary
+
+Scan completed at $(date +'%Y-%m-%d %H:%M:%S')
+
+**Note:** Review the scan output above for detailed host information.
+
+## Safe Scanning Practices Used
+
+1. ✅ Passive ARP discovery first (least intrusive)
+2. ✅ Active discovery using safe Nmap flags (-sn -T2)
+3. ✅ Limited port scanning (22, 80, 443 only)
+4. ✅ No aggressive scanning flags
+5. ✅ No vulnerability scripts
+6. ✅ No full port scans
+
+## Next Steps
+
+1. Review discovered hosts in the inventory database
+2. Analyze risk levels and exposed services
+3. Document findings in security report
+4. Take appropriate remediation actions if needed
+
+---
+
+*This report was generated by the Safe Network Reconnaissance Toolkit*
+*For authorized use only*
+
+EOF
+
+echo ""
+echo -e "${GREEN}========================================${NC}"
+echo -e "${GREEN}  SCAN COMPLETE${NC}"
+echo -e "${GREEN}========================================${NC}"
+echo ""
+echo -e "${GREEN}Report saved to:${NC} ${REPORT_FILE}"
+if [ -f "${CSV_FILE}" ]; then
+    echo -e "${GREEN}CSV saved to:${NC} ${CSV_FILE}"
+fi
+echo ""
+echo -e "${BLUE}View results:${NC}"
+echo "  - Markdown report: ${REPORT_FILE}"
+echo "  - CSV inventory: ${CSV_FILE}"
+echo "  - Database: inventory.db"
+echo ""

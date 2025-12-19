@@ -1,0 +1,14 @@
+# Safe Internal Network Reconnaissance & Asset Inventory Toolkit
+# Python Dependencies
+# 
+# IMPORTANT: This tool is for authorized lab environments only.
+# Ensure you have proper permissions before scanning any network.
+
+scapy>=2.5.0
+python-nmap>=0.7.1
+
+# Note: Nmap must be installed separately on the system
+# Ubuntu/Debian: sudo apt-get install nmap
+# Kali Linux: Already included
+# macOS: brew install nmap
+
