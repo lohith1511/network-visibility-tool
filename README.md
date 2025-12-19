@@ -133,7 +133,7 @@ brew install nmap
 ### Step 1: Clone Repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/lohith1511/network-visibility-tool.git
 cd safe-network-recon
 ```
 
