@@ -134,7 +134,7 @@ brew install nmap
 
 ```bash
 git clone https://github.com/lohith1511/network-visibility-tool.git
-cd safe-network-recon
+cd network-visibility-tool
 ```
 
 ### Step 2: Install Python Dependencies
