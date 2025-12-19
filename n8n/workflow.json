@@ -1,0 +1,136 @@
+{
+  "name": "Network Reconnaissance Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "command": "python3 recon.py 192.168.1.0/24"
+      },
+      "id": "execute-scan",
+      "name": "Execute Scan",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "operation": "readFile",
+        "fileName": "reports/report.md",
+        "options": {}
+      },
+      "id": "read-report",
+      "name": "Read Report",
+      "type": "n8n-nodes-base.readFile",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "YOUR_CHAT_ID",
+        "text": "={{ $json.content }}",
+        "additionalFields": {}
+      },
+      "id": "send-notification",
+      "name": "Send Notification",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [850, 300],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "resource": "database",
+        "databaseId": {
+          "__rl": true,
+            "value": "YOUR_DATABASE_ID",
+            "mode": "id"
+        },
+        "title": "={{ $json.title }}",
+        "properties": {
+          "property": [
+            {
+              "key": "title",
+              "type": "title",
+              "title": "Scan Report"
+            }
+          ]
+        }
+      },
+      "id": "save-to-notion",
+      "name": "Save to Notion",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 1,
+      "position": [1050, 300],
+      "disabled": true
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Execute Scan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Scan": {
+      "main": [
+        [
+          {
+            "node": "Read Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Report": {
+      "main": [
+        [
+          {
+            "node": "Send Notification",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Save to Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}
+
